@@ -1,0 +1,67 @@
+name: Build Upstream LobeChat
+
+permissions:
+  packages: write # 允许上传到你的 GHCR
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Upstream Tag to build (e.g., v2.0.0-next.112)'
+        required: true
+        default: 'main'
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prepare Image Name
+        run: |
+          # 镜像名会使用你当前这个"构建器仓库"的名字
+          # 比如：ghcr.io/yourname/my-lobe-builder
+          echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      # --- 核心修改点开始 ---
+      - name: Checkout Upstream Code
+        uses: actions/checkout@v4
+        with:
+          repository: lobehub/lobe-chat  # 指定去拉取官方仓库
+          ref: ${{ inputs.tag }}         # 拉取你输入的那个 Tag
+          fetch-depth: 0
+      # --- 核心修改点结束 ---
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ inputs.tag }}
+            type=raw,value=latest
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          # 按需选择架构，只选 amd64 速度最快
+          platforms: linux/amd64,linux/arm64 
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
