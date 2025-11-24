@@ -20,7 +20,7 @@ jobs:
     steps:
       - name: Prepare Image Name
         run: |
-          # 镜像名会使用你当前这个"构建器仓库"的名字
+          # 镜像名会使用你当前这个“构建器仓库”的名字
           # 比如：ghcr.io/yourname/my-lobe-builder
           echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -62,6 +62,6 @@ jobs:
           file: ./Dockerfile
           push: true
           # 按需选择架构，只选 amd64 速度最快
-          platforms: linux/amd64,linux/arm64 
+          platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
